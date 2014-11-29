@@ -39,7 +39,7 @@
             // 
             this.Original.Location = new System.Drawing.Point(121, 126);
             this.Original.Name = "Original";
-            this.Original.Size = new System.Drawing.Size(518, 547);
+            this.Original.Size = new System.Drawing.Size(899, 595);
             this.Original.TabIndex = 2;
             this.Original.TabStop = false;
             // 
