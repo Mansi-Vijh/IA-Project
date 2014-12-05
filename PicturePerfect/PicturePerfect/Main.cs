@@ -34,6 +34,7 @@ namespace PicturePerfect
             {
                 Chosen_File = openFD.FileName;
                 //Image<Bgr, byte> img = new Image<Bgr, byte>(Chosen_File);
+              
                 Image<Bgr, byte> img = new Image<Bgr, byte>(Chosen_File);
                 Original.Image = img;
             }

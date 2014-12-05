@@ -17,6 +17,7 @@ namespace PicturePerfect
             Application.SetCompatibleTextRenderingDefault(false);
             //Application.Run(new Main());
             Application.Run(new blend());
+           // Application.Run(new Inpaint());
         }
     }
 }

@@ -61,6 +61,12 @@
     <Compile Include="blend.Designer.cs">
       <DependentUpon>blend.cs</DependentUpon>
     </Compile>
+    <Compile Include="Inpaint.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Inpaint.Designer.cs">
+      <DependentUpon>Inpaint.cs</DependentUpon>
+    </Compile>
     <Compile Include="Main.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -70,6 +76,12 @@
     <Compile Include="MatrixSolver.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="blend.resx">
+      <DependentUpon>blend.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Inpaint.resx">
+      <DependentUpon>Inpaint.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Main.resx">
       <DependentUpon>Main.cs</DependentUpon>
     </EmbeddedResource>
@@ -100,6 +112,15 @@
     <None Include="Resources\test_image.jpg" />
     <None Include="Resources\1 - Copy %283%29.jpg" />
     <None Include="Resources\B.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\mark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Penguins.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Tulips.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

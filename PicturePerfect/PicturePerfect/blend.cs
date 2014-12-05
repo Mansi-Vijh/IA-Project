@@ -7,7 +7,8 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-
+using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Emgu.CV;
 using Emgu.CV.Structure;
@@ -21,9 +22,10 @@ namespace PicturePerfect
     {
         Image<Bgr, byte> original = new Image<Bgr, byte>(Properties.Resources.test_image); //source image 
         Image<Bgr, byte> add = new Image<Bgr, byte>(Properties.Resources.B); //small add image
-        Image<Bgr, byte> selectedImage; //image of the selected region.Size ~ add[image]
+        Image<Gray, byte> selectedImage; //image of the selected region.Size ~ add[image]
         public MatrixSolver solver;
         public Thread blendingThread;
+
 
         //--------------------Initialise the values for mask , selectionArea and SelectionBorder
         public int[,] mask;
@@ -43,16 +45,17 @@ namespace PicturePerfect
         {
             //-------initialise values------------------------
             InitializeComponent();
-            selectionArea= new ArrayList();
+            selectionArea = new ArrayList();
             selectionBorder = new ArrayList();
-            mask = new int[original.Width,original.Height];
-            selectedImage = new Image<Bgr, byte>(add.Width, add.Height);
-             int i, j;
-		    for (int x = 0; x < original.Width; x++) 
+            System.Console.WriteLine("B val IS " + original.Data[132, 584, 0] + "G val IS" + original.Data[132, 584, 1] + "R val IS" + original.Data[132, 584, 1]);
+            mask = new int[original.Width, original.Height];
+            selectedImage = new Image<Gray, byte>(add.Width, add.Height);
+            int i, j;
+            for (int x = 0; x < original.Width; x++)
             {
-			    for (int y = 0; y < original.Height; y++)
-				    mask[x,y] = 0;
-		    }
+                for (int y = 0; y < original.Height; y++)
+                    mask[x, y] = 0;
+            }
 
             //----------------------create selectionArea list
             for (i = 0; i < original.Height; i++)
@@ -60,10 +63,13 @@ namespace PicturePerfect
                 for (j = 0; j < original.Width; j++)
                 {
                     //do error handling for other non-target white pixels in img
-                    if ((original.Data[i,j, 0] == 255) && (original.Data[i,j, 1] == 255) &&(original.Data[i,j,2]==255))
+                    if ((original.Data[i, j, 0] > 252) && (original.Data[i, j, 1] > 252) || (original.Data[i, j, 2] > 252))
                     {
-                        Point p=new Point(j,i);
+                        Point p = new Point(j, i);
                         selectionArea.Add(p);
+                        original.Data[i, j, 0] = 255;
+                        original.Data[i, j, 1] = 255;
+                        original.Data[i, j, 2] = 255;
                     }
                 }
             }
@@ -74,28 +80,34 @@ namespace PicturePerfect
             Image<Gray, Byte> cont = new Image<Gray, Byte>(original.Width, original.Height);
             cont = noise(laplace(input));
             cont.Save(OutFileLocation + "\\" + "lap" + ".jpg");
+            Point q = (Point)selectionArea[0];
+            xMin = q.Y;
+            yMin = q.X;
             foreach (Point p in selectionArea)
             {
                 cont.Data[p.Y, p.X, 0] = 255;
-                if((p.X > 0)&&(p.X< original.Width)&&(p.Y > 0)&&(p.Y<original.Height))
+                if ((p.X > 0) && (p.X < original.Width) && (p.Y > 0) && (p.Y < original.Height))
                 {
-                    if ((original.Data[(p.Y), (p.X)+1, 0]!=255)||(original.Data[(p.Y), (p.X)-1, 0]!=255)||(original.Data[(p.Y)+1, (p.X), 0]!=255)||(original.Data[(p.Y)-1, (p.X), 0]!=255))
+                    if ((original.Data[(p.Y), (p.X) + 1, 0] != 255) || (original.Data[(p.Y), (p.X) - 1, 0] != 255) || (original.Data[(p.Y) + 1, (p.X), 0] != 255) || (original.Data[(p.Y) - 1, (p.X), 0] != 255))
                     {
                         selectionBorder.Add(p);
-                        input.Data[p.Y,p.X,0]=0;
+                        input.Data[p.Y, p.X, 0] = 0;
                     }
                 }
             }
             cont.Save(OutFileLocation + "\\" + "lap" + ".jpg");
             input.Save(OutFileLocation + "\\" + "incorrect_input" + ".jpg");
+            CvInvoke.cvCvtColor(add, selectedImage, COLOR_CONVERSION.BGR2GRAY); ;
             updateMask();
-			solver = new MatrixSolver(mask, selectionArea, original, selectedImage,xMin, yMin, input.Width, input.Height, true);
-			IterationBlender blender = new IterationBlender();
-			blendingThread = new Thread(new );
-			blendingThread.Start();
+            solver = new MatrixSolver(mask, selectionArea, original, selectedImage, xMin, yMin, input.Width, input.Height, true);
+            IterationBlender blender = new IterationBlender(this);
+            blendingThread = new Thread(blender.run);
+            blendingThread.Start();
+            timer1.Enabled = true;
+            this.imageBox1.Image = original;
+            this.imageBox2.Image = selectedImage;
 
-    
-    }
+        }
 
         //---------------Laplacian for contour-----------------------------------
         private Image<Gray, Byte> noise(Image<Gray, Byte> output1)
@@ -179,143 +191,82 @@ namespace PicturePerfect
             for (int x = 0; x < original.Height; x++)
             {
                 for (int y = 0; y < original.Width; y++)
-                    mask[x,y] = -2;
+                    mask[y, x] = -2;
             }
             int c = 0;
             foreach (Point p in selectionArea)
             {
-                    mask[p.X,p.Y]=c;
-                    c++;
-            }
-            foreach (Point p in selectionBorder)
-            {
-                mask[p.X,p.Y]=-1;
-            }
-         }
-
-
-
-            /*
-            //Clip the motion to the display window
-            if (xMin + dx < 1)
-                dx = 1 - xMin;
-            if (xMax + dx > Width - 1)
-                dx = Width - 1 - xMax;
-            if (yMin + dy < 1)
-                dy = 1 - yMin;
-            if (yMax + dy > Height - 1)
-                dy = Height - 1 - yMax;
-            //Now update the mask
-            for (int x = 0; x < original.Width; x++)
-            {
-                for (int y = 0; y < original.Height; y++)
-                    mask[x,y] = -2;
-            }
-            foreach (Point p in selectionBorder)
-            {
-
-                int x = p.X+dx;
-                int y = p.Y+dy;
-                p.X = x;
-                p.Y = y;
-                mask[x,y] = -1;
-            }
-            int c = 0;
-            foreach (Point p in selectionArea)
-            {
-                int x = p.X + dx;
-                int y = p.Y + dy;
-                p.X = x;
-                p.Y = y;
-                mask[x,y] = c;
+                mask[p.X, p.Y] = c;
                 c++;
             }
-            xMin += dx; xMax += dx;
-            yMin += dy; yMax += dy;
-            dx = 0;
-            dy = 0;*/
-
-
-        // ----- next iteration
-        public void nextIteration()
-        {
-		for (int i = 0; i < 100; i++)
-			//solver.nextIteration();
-		    //synchronized(selectedImage) 
+            foreach (Point p in selectionBorder)
             {
-			    //solver.updateImage(selectedImage);
-		    }	
-	    }
-        class IterationBlender
-        {
-		public void run() {
-			int iteration = 0;
-			double error;
-			double Norm = 1.0;
-			do {
-				error = solver.getError();
-				if (iteration == 1)
-					Norm = Math.log(error);
-				if (iteration >= 1) {
-					double progress = 1.0 - Math.log(error) / Norm;
-					progressBar.setValue((int)(progress*100));
-					progressBar.repaint();
-				}
-				iteration++;
-				nextIteration();
-			}
-			while (error > 1.0);
-			return ;
-		}
-	}
-        
-    }
-}
-
-/*
-for (i = 0; i < original.Height; i++)
-{
-    for (j = 0; j < original.Width; j++)
-    {
-        if (input.Data[i, j, 0] == 0)
-        {
-            if (input.Data[i, j, 0] == 0)
-            {
-                if ((input.Data[i - 1, j, 0] == 255) || (input.Data[i + 1, j, 0] == 255) || (input.Data[i, j - 1, 0] == 255) || (input.Data[i, j + 1, 0] == 255))
-                    input.Data[i, j, 0] = 255;
+                mask[p.X, p.Y] = -1;
             }
         }
-    }
-}
-input.Save(OutFileLocation + "\\" + "correct_input" + ".jpg");
-selectionArea.Clear();
-for (i = 0; i < input.Height; i++)
-{
-    for (j = 0; j < input.Width; j++)
-    {
-        //do error handling for other non-target white pixels in img
-        if ((input.Data[i, j, 0] == 255))
-        {
-            Point p = new Point(j, i);
-            selectionArea.Add(p);
-        }
-    }
-}
-            
 
-selectionBorder.Clear();
-Image<Gray, Byte> output = new Image<Gray, Byte>(original.Width, original.Height);
-foreach (Point p in selectionArea)
-{
-    cont.Data[p.Y, p.X, 0] = 255;
-    if ((p.X > 0) && (p.X < input.Width) && (p.Y > 0) && (p.Y < input.Height))
-    {
-        if ((input.Data[(p.Y), (p.X) + 1, 0] != 255) || (input.Data[(p.Y), (p.X) - 1, 0] != 255) || (input.Data[(p.Y) + 1, (p.X), 0] != 255) || (input.Data[(p.Y) - 1, (p.X), 0] != 255))
+        // ----- next iteration
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        public void nextIteration()
         {
-            selectionBorder.Add(p);
-            output.Data[p.Y, p.X, 0] = 255;
+
+            for (int i = 0; i < 100; i++)
+            {
+                solver.nextIteration();
+            }
+
+            solver.updateImage(selectedImage);
+        }
+        class IterationBlender
+        {
+            blend b = new blend();
+            public IterationBlender(blend bt)
+            {
+                this.b = bt;
+            }
+            public void run()
+            {
+                int iteration = 0;
+                double error;
+                double Norm = 1.0;
+                do
+                {
+                    error = b.solver.getError();
+                    if (iteration == 1)
+                        Norm = Math.Log(error);
+                    iteration++;
+                    b.nextIteration();
+                }
+                while (error > 1.0);
+                return;
+            }
+        }
+        System.Threading.Thread t;
+        string s = "processing";
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            timer1.Enabled = false;
+
+            if (t.ThreadState == System.Threading.ThreadState.Running)
+                t.Suspend();
+            try
+            {
+                imageBox2.Image = selectedImage;
+            }
+            catch (Exception ex)
+            {
+            }
+
+            if (t.ThreadState == System.Threading.ThreadState.Suspended)
+                t.Resume();
+            this.Text = s;
+            if (s == "DONE")
+            {
+                return;
+            }
+            timer1.Enabled = true;
+
         }
     }
 }
-output.Save(OutFileLocation + "\\" + "with_border" + ".jpg");
-*/
+
